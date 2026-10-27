@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Censo de Arbolado Urbano</title>
     
-    <!-- 1. Estilos del Mapa (CDN Alternativo Seguro) -->
+    <!-- 1. Estilos del Mapa (CDN Estable de Leaflet) -->
     <link rel="stylesheet" href="https://cloudflare.com" />
     
-    <!-- 2. Librería de Excel (CDN Alternativo Seguro) -->
+    <!-- 2. Librería de Excel (CDN Estable de SheetJS) -->
     <script src="https://cloudflare.com"></script>
     
     <style>
@@ -17,13 +17,15 @@
         header { background-color: #1b5e20; color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         #main-container { display: flex; flex: 1; overflow: hidden; position: relative; }
         
-        #map { flex: 1; height: 100%; background-color: #e5e3df; min-height: 300px; }
+        /* Contenedor del mapa con ancho y posición forzada */
+        #map { flex: 1; height: 100%; width: 100%; background-color: #e5e3df; min-height: 300px; }
+        
         #sidebar { width: 380px; background: white; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; z-index: 999; box-shadow: -2px 0 5px rgba(0,0,0,0.1); }
         
         @media (max-width: 768px) {
             #main-container { flex-direction: column; }
-            #map { height: 35%; width: 100%; }
-            #sidebar { width: 100%; height: 65%; }
+            #map { height: 40%; width: 100%; }
+            #sidebar { width: 100%; height: 60%; }
         }
         
         .form-group { display: flex; flex-direction: column; gap: 5px; }
@@ -54,11 +56,13 @@
     <header>🌲 Censo de Arbolado Georreferenciado</header>
 
     <div id="main-container">
+        <!-- Mapa de OpenStreetMap -->
         <div id="map"></div>
 
+        <!-- Formulario de Registro -->
         <div id="sidebar">
             <div class="instructions">
-                <strong>Captura:</strong> Usa el botón azul para buscar tu posición GPS o toca el mapa. Al terminar el sector, usa los botones de abajo para descargar el Excel o enviar el reporte.
+                <strong>Captura:</strong> Pulsa el botón azul para buscar tu posición por GPS o toca el mapa directamente. Saca la foto, ingresa las medidas y guarda el registro.
             </div>
 
             <button type="button" class="btn-gps" onclick="obtenerUbicacionActual()">📍 Obtener mi ubicación actual</button>
@@ -67,11 +71,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Latitud</label>
-                        <input type="text" id="lat" readonly required placeholder="Buscando...">
+                        <input type="text" id="lat" readonly required placeholder="Marcador en mapa...">
                     </div>
                     <div class="form-group">
                         <label>Longitud</label>
-                        <input type="text" id="lng" readonly required placeholder="Buscando...">
+                        <input type="text" id="lng" readonly required placeholder="Marcador en mapa...">
                     </div>
                 </div>
 
@@ -130,17 +134,18 @@
             </form>
 
             <hr style="border: 0; border-top: 1px solid #ccc; margin: 5px 0;">
-            
-            <!-- Herramientas de Cierre de Jornada -->
             <button type="button" class="btn-excel" onclick="exportarExcelReal()">🟢 1. Descargar Archivo Excel</button>
             <button type="button" class="btn-mail" onclick="enviarReporteMail()">✉ 2. Finalizar Sector y Enviar Correo</button>
         </div>
     </div>
 
+    <!-- 3. Librería JavaScript de Leaflet -->
     <script src="https://cloudflare.com"></script>
     <script>
-        const map = L.map('map').setView([-34.6037, -58.3816], 13); 
+        // Inicializar mapa centrado por defecto en Chile central (-34.42, -71.22)
+        const map = L.map('map').setView([-34.42, -71.22], 12); 
         
+        // Cargar mapas base desde los servidores oficiales de OpenStreetMap
         L.tileLayer('https://openstreetmap.org{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap'
@@ -150,16 +155,21 @@
         let listaArboles = [];
         let fotoBase64 = "";
 
+        // Forzar al mapa a renderizar sus mosaicos completamente (Solución pantalla gris/blanca)
         map.whenReady(() => {
-            setTimeout(() => { map.invalidateSize(); }, 400);
+            setTimeout(() => { 
+                map.invalidateSize(); 
+            }, 500);
         });
 
+        // Intentar geolocalizar de manera pasiva al arrancar la app
         map.locate({setView: true, maxZoom: 16});
 
         map.on('locationfound', function(e) {
             actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
         });
 
+        // Evento único de clic en el mapa (CORREGIDO)
         map.on('click', function(e) {
             actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
         });
@@ -178,7 +188,9 @@
         }
 
         function obtenerUbicacionActual() {
-            if (!navigator.geolocation) { return alert("Tu dispositivo no soporta geolocalización."); }
+            if (!navigator.geolocation) { 
+                return alert("Tu dispositivo o navegador no soporta geolocalización."); 
+            }
             
             const btn = document.querySelector('.btn-gps');
             const textoOriginal = btn.innerHTML;
@@ -190,15 +202,3 @@
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     map.setView([lat, lng], 18);
-                    actualizarCoordenadasFormulario(lat, lng);
-                    btn.innerHTML = textoOriginal;
-                    btn.disabled = false;
-                    setTimeout(() => { map.invalidateSize(); }, 200);
-                }, 
-                function(error) {
-                    btn.innerHTML = textoOriginal;
-                    btn.disabled = false;
-                    alert("Asegúrate de dar permisos de GPS al navegador y tener la ubicación activada.");
-                }, 
-                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-            );
