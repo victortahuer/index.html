@@ -165,7 +165,10 @@
                 map.setView([lat, lng], 18);
                 actualizarCoordenadasFormulario(lat, lng);
             }, function() {
-                alert("Activa los permisos de ubicación en tu dispositivo.");
+                alert("Activa los permisos de ubicación en tu dispositivo."); map.locate({setView: true, maxZoom: 16});
+
+map.on('click', function(e) {
+    actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
             });
         }
 
