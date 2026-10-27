@@ -4,21 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Censo de Árboles Georreferenciados Profesional</title>
-    <!-- Leaflet CSS para el mapa -->
+    
+    <!-- Leaflet CSS para el mapa (CORREGIDO) -->
     <link rel="stylesheet" href="https://unpkg.com" />
-    <!-- Librería SheetJS para exportar a Excel nativo (.xlsx) -->
+    
+    <!-- Librería SheetJS para exportar a Excel nativo (CORREGIDO) -->
     <script src="https://jsdelivr.net"></script>
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f8; }
         header { background-color: #1b5e20; color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         #main-container { display: flex; flex: 1; overflow: hidden; }
-        #map { flex: 1; height: 100%; }
+        #map { flex: 1; height: 100%; min-height: 300px; }
         #sidebar { width: 400px; background: white; padding: 20px; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px; }
+        
         @media (max-width: 768px) {
             #main-container { flex-direction: column; }
             #sidebar { width: 100%; height: 55%; }
+            #map { height: 45%; }
         }
+        
         .form-group { display: flex; flex-direction: column; gap: 5px; }
         .form-row { display: flex; gap: 10px; }
         .form-row .form-group { flex: 1; }
@@ -48,7 +54,7 @@
         <!-- Formulario de Registro -->
         <div id="sidebar">
             <div class="instructions">
-                <strong>Captura en Terreno:</strong> Toca el mapa para posicionar el árbol o pulsa el botón de ubicación GPS. Completa los datos métricos y guarda.
+                <strong>Captura en Terreno:</strong> Toca el mapa para posicionar el árbol o pulsa el botón azul para buscar tu ubicación por GPS. Toma la foto, completa los datos métricos y guarda.
             </div>
 
             <button type="button" class="btn-secondary" onclick="obtenerUbicacionActual()">📍 Obtener mi ubicación actual</button>
@@ -57,11 +63,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Latitud</label>
-                        <input type="text" id="lat" readonly required placeholder="Ubicación">
+                        <input type="text" id="lat" readonly required placeholder="Buscando...">
                     </div>
                     <div class="form-group">
                         <label>Longitud</label>
-                        <input type="text" id="lng" readonly required placeholder="Ubicación">
+                        <input type="text" id="lng" readonly required placeholder="Buscando...">
                     </div>
                 </div>
 
@@ -75,7 +81,6 @@
                     <input type="text" id="nombre-cientifico" placeholder="Ej: Jacaranda mimosifolia">
                 </div>
 
-                <!-- Nuevos Campos Solicitados: DAP y Altura -->
                 <div class="form-row">
                     <div class="form-group">
                         <label>Diámetro (DAP en cm)</label>
@@ -113,6 +118,7 @@
 
                 <div class="form-group">
                     <label>Fotografía</label>
+                    <!-- capture="environment" abre la cámara trasera automáticamente en teléfonos -->
                     <input type="file" id="foto" accept="image/*" capture="environment" onchange="previsualizarFoto(event)">
                     <img id="photo-preview" alt="Vista previa">
                 </div>
@@ -125,27 +131,35 @@
         </div>
     </div>
 
-    <!-- Leaflet JS -->
+    <!-- Leaflet JS para el mapa (CORREGIDO) -->
     <script src="https://unpkg.com"></script>
     <script>
-        const map = L.map('map').setView([-34.42, -71.22], 13); 
+        // Inicializar el mapa con coordenadas globales predeterminadas
+        const map = L.map('map').setView([-34.6037, -58.3816], 13); 
         
+        // Cargar capas seguras de OpenStreetMap (CORREGIDO)
         L.tileLayer('https://openstreetmap.org{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
+            attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
         }).addTo(map);
 
         let marcadorTemporal = null;
         let listaArboles = [];
         let fotoBase64 = "";
 
+        // Ajustar el tamaño del mapa al iniciar en dispositivos móviles
         map.whenReady(() => {
-    setTimeout(() => { map.invalidateSize(); }, 300);
-});
+            setTimeout(() => { map.invalidateSize(); }, 400);
+        });
 
-map.on('click', function(e) {
-    actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
-});
+        // Intentar geolocalizar automáticamente al abrir la aplicación
+        map.locate({setView: true, maxZoom: 16});
 
+        // Eventos de geolocalización automática
+        map.on('locationfound', function(e) {
+            actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
+        });
+
+        // Capturar clic directo en el mapa
         map.on('click', function(e) {
             actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
         });
@@ -164,18 +178,16 @@ map.on('click', function(e) {
         }
 
         function obtenerUbicacionActual() {
-            if (!navigator.geolocation) { return alert("Tu navegador no soporta GPS."); }
+            if (!navigator.geolocation) { return alert("Tu dispositivo no soporta geolocalización."); }
             navigator.geolocation.getCurrentPosition(function(position) {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 map.setView([lat, lng], 18);
                 actualizarCoordenadasFormulario(lat, lng);
+                setTimeout(() => { map.invalidateSize(); }, 200);
             }, function() {
-                alert("Activa los permisos de ubicación en tu dispositivo."); map.locate({setView: true, maxZoom: 16});
-
-map.on('click', function(e) {
-    actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
-            });
+                alert("Por favor activa el GPS de tu celular y acepta los permisos de ubicación en el navegador.");
+            }, { enableHighAccuracy: true });
         }
 
         function previsualizarFoto(event) {
@@ -185,60 +197,3 @@ map.on('click', function(e) {
                 reader.onload = function(e) {
                     fotoBase64 = e.target.result;
                     const preview = document.getElementById('photo-preview');
-                    preview.src = fotoBase64;
-                    preview.style.display = 'block';
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function guardarArbol(e) {
-            e.preventDefault();
-            
-            const lat = parseFloat(document.getElementById('lat').value);
-            const lng = parseFloat(document.getElementById('lng').value);
-            const nombreComun = document.getElementById('nombre-comun').value;
-            const nombreCientifico = document.getElementById('nombre-cientifico').value || "N/A";
-            const dap = document.getElementById('dap').value ? parseFloat(document.getElementById('dap').value) : "N/A";
-            const altura = document.getElementById('altura').value ? parseFloat(document.getElementById('altura').value) : "N/A";
-            const deterioro = document.getElementById('deterioro').value;
-            const consumoAgua = document.getElementById('consumo-agua').value;
-Usa el código con precaución.
-const bajoCableado = document.getElementById('bajo-cableado').checked ? "SÍ" : "NO";
-const nuevoArbol = {
-"Latitud": lat,
-"Longitud": lng,
-"Nombre Común": nombreComun,
-"Nombre Científico": nombreCientifico,
-"DAP (cm)": dap,
-"Altura (m)": altura,
-"Deterioro": deterioro,
-"Consumo de Agua": consumoAgua,
-"Bajo Cableado": bajoCableado,
-"Foto (Base64)": fotoBase64 || "Sin foto"
-};
-listaArboles.push(nuevoArbol);
-const popupContenido = <div style="font-size:13px; min-width:180px;"> <b style="font-size:14px; color:#1b5e20;">${nombreComun}</b><br> <i>${nombreCientifico}</i><hr style="margin:4px 0;"> <b>DAP:</b> ${dap} cm | <b>Alt:</b> ${altura} m<br> <b>Estado:</b> ${deterioro}<br> <b>¿Cableado?:</b> ${bajoCableado}<br> ${fotoBase64 ?: ''} </div>;
-L.marker([lat, lng]).addTo(map).bindPopup(popupContenido);
-// Resetear Formulario
-document.getElementById('tree-form').reset();
-document.getElementById('photo-preview').style.display = 'none';
-if (marcadorTemporal) { map.removeLayer(marcadorTemporal); }
-fotoBase64 = "";
-alert(Árbol registrado con éxito.);
-}
-// Nueva función de exportación a un archivo .xlsx real usando SheetJS
-function exportarExcelReal() {
-if (listaArboles.length === 0) {
-return alert("No hay datos cargados para exportar.");
-}
-// Crear libro y hoja de cálculo vacíos
-const wb = XLSX.utils.book_new();
-const ws = XLSX.utils.json_to_sheet(listaArboles);
-// Ajustar automáticamente el ancho de las columnas para que queden legibles
-const maxW = [{wch:12}, {wch:12}, {wch:20}, {wch:22}, {wch:10}, {wch:10}, {wch:12}, {wch:15}, {wch:12}, {wch:25}];
-ws['!cols'] = maxW;
-// Adjuntar hoja al libro y descargar
-XLSX.utils.book_append_sheet(wb, ws, "Censo Arbolado");
-XLSX.writeFile(wb, "censo_arbolado_urbano.xlsx");
-}
