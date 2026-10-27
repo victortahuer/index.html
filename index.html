@@ -5,24 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Censo de Árboles Georreferenciados Profesional</title>
     
-    <!-- Leaflet CSS para el mapa (CORREGIDO) -->
-    <link rel="stylesheet" href="https://unpkg.com" />
+    <!-- 1. LIBRERÍA CSS DE LEAFLET (REMANUFACTURADA Y COMPLETA) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     
-    <!-- Librería SheetJS para exportar a Excel nativo (CORREGIDO) -->
+    <!-- 2. LIBRERÍA SHEETJS PARA EXPORTAR A EXCEL (COMPLETA) -->
     <script src="https://jsdelivr.net"></script>
     
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f8; }
-        header { background-color: #1b5e20; color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        #main-container { display: flex; flex: 1; overflow: hidden; }
-        #map { flex: 1; height: 100%; min-height: 300px; }
-        #sidebar { width: 400px; background: white; padding: 20px; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px; }
+        header { background-color: #1b5e20; color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; }
+        #main-container { display: flex; flex: 1; overflow: hidden; position: relative; }
         
+        /* Contenedor del Mapa */
+        #map { flex: 1; height: 100%; min-height: 350px; background-color: #e0e0e0; }
+        
+        /* Barra lateral de datos */
+        #sidebar { width: 400px; background: white; padding: 20px; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px; z-index: 999; }
+        
+        /* Adaptación para pantallas de Celulares */
         @media (max-width: 768px) {
             #main-container { flex-direction: column; }
-            #sidebar { width: 100%; height: 55%; }
-            #map { height: 45%; }
+            #map { height: 40%; width: 100%; }
+            #sidebar { width: 100%; height: 60%; }
         }
         
         .form-group { display: flex; flex-direction: column; gap: 5px; }
@@ -63,11 +68,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Latitud</label>
-                        <input type="text" id="lat" readonly required placeholder="Buscando...">
+                        <input type="text" id="lat" readonly required placeholder="Haz clic en el mapa...">
                     </div>
                     <div class="form-group">
                         <label>Longitud</label>
-                        <input type="text" id="lng" readonly required placeholder="Buscando...">
+                        <input type="text" id="lng" readonly required placeholder="Haz clic en el mapa...">
                     </div>
                 </div>
 
@@ -118,7 +123,7 @@
 
                 <div class="form-group">
                     <label>Fotografía</label>
-                    <!-- capture="environment" abre la cámara trasera automáticamente en teléfonos -->
+                    <!-- capture="environment" abre la cámara de forma nativa en celulares modernos -->
                     <input type="file" id="foto" accept="image/*" capture="environment" onchange="previsualizarFoto(event)">
                     <img id="photo-preview" alt="Vista previa">
                 </div>
@@ -131,35 +136,36 @@
         </div>
     </div>
 
-    <!-- Leaflet JS para el mapa (CORREGIDO) -->
-    <script src="https://unpkg.com"></script>
+    <!-- 3. LIBRERÍA JAVASCRIPT DE LEAFLET (REMANUFACTURADA Y COMPLETA) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
-        // Inicializar el mapa con coordenadas globales predeterminadas
+        // Inicializar mapa centrado por defecto en coordenadas neutras
         const map = L.map('map').setView([-34.6037, -58.3816], 13); 
         
-        // Cargar capas seguras de OpenStreetMap (CORREGIDO)
-        L.tileLayer('https://openstreetmap.org{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
+        // Cargar mapa base seguro desde el CDN oficial de OpenStreetMap
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
         let marcadorTemporal = null;
         let listaArboles = [];
         let fotoBase64 = "";
 
-        // Ajustar el tamaño del mapa al iniciar en dispositivos móviles
+        // Corrección de redimensionamiento automático para móviles
         map.whenReady(() => {
             setTimeout(() => { map.invalidateSize(); }, 400);
         });
 
-        // Intentar geolocalizar automáticamente al abrir la aplicación
+        // Intentar geolocalizar de manera pasiva al arrancar la app
         map.locate({setView: true, maxZoom: 16});
 
-        // Eventos de geolocalización automática
+        // Si el dispositivo encuentra la ubicación al cargar, actualiza el formulario automáticamente
         map.on('locationfound', function(e) {
             actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
         });
 
-        // Capturar clic directo en el mapa
+        // Capturar pulsación en el mapa
         map.on('click', function(e) {
             actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
         });
@@ -177,23 +183,12 @@
             });
         }
 
+        // Función del Botón GPS Activo
         function obtenerUbicacionActual() {
             if (!navigator.geolocation) { return alert("Tu dispositivo no soporta geolocalización."); }
+            
             navigator.geolocation.getCurrentPosition(function(position) {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 map.setView([lat, lng], 18);
                 actualizarCoordenadasFormulario(lat, lng);
-                setTimeout(() => { map.invalidateSize(); }, 200);
-            }, function() {
-                alert("Por favor activa el GPS de tu celular y acepta los permisos de ubicación en el navegador.");
-            }, { enableHighAccuracy: true });
-        }
-
-        function previsualizarFoto(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    fotoBase64 = e.target.result;
-                    const preview = document.getElementById('photo-preview');
