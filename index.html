@@ -138,7 +138,13 @@
         let listaArboles = [];
         let fotoBase64 = "";
 
-        map.locate({setView: true, maxZoom: 16});
+        map.whenReady(() => {
+    setTimeout(() => { map.invalidateSize(); }, 300);
+});
+
+map.on('click', function(e) {
+    actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
+});
 
         map.on('click', function(e) {
             actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
