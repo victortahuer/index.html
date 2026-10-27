@@ -3,48 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Censo de Árboles Georreferenciados Profesional</title>
+    <title>Censo de Arbolado Urbano</title>
     
-    <!-- 1. LIBRERÍA CSS DE LEAFLET (REMANUFACTURADA Y COMPLETA) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- 1. Estilos del Mapa (CDN Alternativo Seguro) -->
+    <link rel="stylesheet" href="https://cloudflare.com" />
     
-    <!-- 2. LIBRERÍA SHEETJS PARA EXPORTAR A EXCEL (COMPLETA) -->
-    <script src="https://jsdelivr.net"></script>
+    <!-- 2. Librería de Excel (CDN Alternativo Seguro) -->
+    <script src="https://cloudflare.com"></script>
     
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f8; }
-        header { background-color: #1b5e20; color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; }
+        header { background-color: #1b5e20; color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         #main-container { display: flex; flex: 1; overflow: hidden; position: relative; }
         
-        /* Contenedor del Mapa */
-        #map { flex: 1; height: 100%; min-height: 350px; background-color: #e0e0e0; }
+        #map { flex: 1; height: 100%; background-color: #e5e3df; min-height: 300px; }
+        #sidebar { width: 380px; background: white; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; z-index: 999; box-shadow: -2px 0 5px rgba(0,0,0,0.1); }
         
-        /* Barra lateral de datos */
-        #sidebar { width: 400px; background: white; padding: 20px; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px; z-index: 999; }
-        
-        /* Adaptación para pantallas de Celulares */
         @media (max-width: 768px) {
             #main-container { flex-direction: column; }
-            #map { height: 40%; width: 100%; }
-            #sidebar { width: 100%; height: 60%; }
+            #map { height: 35%; width: 100%; }
+            #sidebar { width: 100%; height: 65%; }
         }
         
         .form-group { display: flex; flex-direction: column; gap: 5px; }
         .form-row { display: flex; gap: 10px; }
         .form-row .form-group { flex: 1; }
         label { font-weight: 600; color: #333; font-size: 0.9rem; }
-        input, select { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; width: 100%; }
+        input, select { padding: 9px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; width: 100%; }
         input:focus, select:focus { border-color: #1b5e20; outline: none; }
         .row-checkbox { flex-direction: row; align-items: center; gap: 10px; margin-top: 5px; }
         .row-checkbox input { width: 18px; height: 18px; cursor: pointer; }
-        button { background-color: #2e7d32; color: white; border: none; padding: 12px; border-radius: 4px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
-        button:hover { background-color: #1b5e20; }
-        .btn-secondary { background-color: #0288d1; }
-        .btn-secondary:hover { background-color: #01579b; }
-        .btn-export { background-color: #1565c0; }
-        .btn-export:hover { background-color: #0d47a1; }
-        .instructions { font-size: 0.85rem; color: #666; background: #e8f5e9; padding: 10px; border-radius: 4px; border-left: 4px solid #2e7d32; }
+        
+        button { color: white; border: none; padding: 12px; border-radius: 4px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .btn-submit { background-color: #2e7d32; width: 100%; margin-top: 5px; }
+        .btn-submit:hover { background-color: #1b5e20; }
+        .btn-gps { background-color: #0288d1; width: 100%; }
+        .btn-gps:hover { background-color: #01579b; }
+        .btn-excel { background-color: #1565c0; width: 100%; }
+        .btn-excel:hover { background-color: #0d47a1; }
+        .btn-mail { background-color: #d32f2f; width: 100%; }
+        .btn-mail:hover { background-color: #b71c1c; }
+        
+        .instructions { font-size: 0.85rem; color: #555; background: #e8f5e9; padding: 10px; border-radius: 4px; border-left: 4px solid #2e7d32; line-height: 1.3; }
         #photo-preview { max-width: 100%; max-height: 120px; border-radius: 4px; display: none; object-fit: cover; margin-top: 5px; }
     </style>
 </head>
@@ -53,26 +54,24 @@
     <header>🌲 Censo de Arbolado Georreferenciado</header>
 
     <div id="main-container">
-        <!-- Mapa de OpenStreetMap -->
         <div id="map"></div>
 
-        <!-- Formulario de Registro -->
         <div id="sidebar">
             <div class="instructions">
-                <strong>Captura en Terreno:</strong> Toca el mapa para posicionar el árbol o pulsa el botón azul para buscar tu ubicación por GPS. Toma la foto, completa los datos métricos y guarda.
+                <strong>Captura:</strong> Usa el botón azul para buscar tu posición GPS o toca el mapa. Al terminar el sector, usa los botones de abajo para descargar el Excel o enviar el reporte.
             </div>
 
-            <button type="button" class="btn-secondary" onclick="obtenerUbicacionActual()">📍 Obtener mi ubicación actual</button>
+            <button type="button" class="btn-gps" onclick="obtenerUbicacionActual()">📍 Obtener mi ubicación actual</button>
 
             <form id="tree-form" onsubmit="guardarArbol(event)">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Latitud</label>
-                        <input type="text" id="lat" readonly required placeholder="Haz clic en el mapa...">
+                        <input type="text" id="lat" readonly required placeholder="Buscando...">
                     </div>
                     <div class="form-group">
                         <label>Longitud</label>
-                        <input type="text" id="lng" readonly required placeholder="Haz clic en el mapa...">
+                        <input type="text" id="lng" readonly required placeholder="Buscando...">
                     </div>
                 </div>
 
@@ -102,15 +101,15 @@
                     <select id="deterioro" required>
                         <option value="Sano">Sano (Sin afectaciones visibles)</option>
                         <option value="Leve">Leve (Ramas rotas / Sequía menor)</option>
-                        <option value="Moderado">Moderado (Plagas / Cavidades estructurales)</option>
-                        <option value="Grave">Grave (Riesgo inminente de caída)</option>
+                        <option value="Moderado">Moderado (Plagas / Daño parcial)</option>
+                        <option value="Grave">Grave (Riesgo de caída)</option>
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label>Consumo de Agua</label>
                     <select id="consumo-agua" required>
-                        <option value="Bajo">Bajo (Especie xerófita)</option>
+                        <option value="Bajo">Bajo (Especie resistente)</option>
                         <option value="Medio">Medio (Riego estándar)</option>
                         <option value="Alto">Alto (Demanda constante)</option>
                     </select>
@@ -123,49 +122,44 @@
 
                 <div class="form-group">
                     <label>Fotografía</label>
-                    <!-- capture="environment" abre la cámara de forma nativa en celulares modernos -->
                     <input type="file" id="foto" accept="image/*" capture="environment" onchange="previsualizarFoto(event)">
                     <img id="photo-preview" alt="Vista previa">
                 </div>
 
-                <button type="submit" style="margin-top: 5px; width: 100%;">💾 Guardar Árbol</button>
+                <button type="submit" class="btn-submit">💾 Guardar Árbol</button>
             </form>
 
             <hr style="border: 0; border-top: 1px solid #ccc; margin: 5px 0;">
-            <button class="btn-export" onclick="exportarExcelReal()">🟢 Exportar Censo a Excel (.XLSX)</button>
+            
+            <!-- Herramientas de Cierre de Jornada -->
+            <button type="button" class="btn-excel" onclick="exportarExcelReal()">🟢 1. Descargar Archivo Excel</button>
+            <button type="button" class="btn-mail" onclick="enviarReporteMail()">✉ 2. Finalizar Sector y Enviar Correo</button>
         </div>
     </div>
 
-    <!-- 3. LIBRERÍA JAVASCRIPT DE LEAFLET (REMANUFACTURADA Y COMPLETA) -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cloudflare.com"></script>
     <script>
-        // Inicializar mapa centrado por defecto en coordenadas neutras
         const map = L.map('map').setView([-34.6037, -58.3816], 13); 
         
-        // Cargar mapa base seguro desde el CDN oficial de OpenStreetMap
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://openstreetmap.org{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
         let marcadorTemporal = null;
         let listaArboles = [];
         let fotoBase64 = "";
 
-        // Corrección de redimensionamiento automático para móviles
         map.whenReady(() => {
             setTimeout(() => { map.invalidateSize(); }, 400);
         });
 
-        // Intentar geolocalizar de manera pasiva al arrancar la app
         map.locate({setView: true, maxZoom: 16});
 
-        // Si el dispositivo encuentra la ubicación al cargar, actualiza el formulario automáticamente
         map.on('locationfound', function(e) {
             actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
         });
 
-        // Capturar pulsación en el mapa
         map.on('click', function(e) {
             actualizarCoordenadasFormulario(e.latlng.lat, e.latlng.lng);
         });
@@ -183,12 +177,28 @@
             });
         }
 
-        // Función del Botón GPS Activo
         function obtenerUbicacionActual() {
             if (!navigator.geolocation) { return alert("Tu dispositivo no soporta geolocalización."); }
             
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                map.setView([lat, lng], 18);
-                actualizarCoordenadasFormulario(lat, lng);
+            const btn = document.querySelector('.btn-gps');
+            const textoOriginal = btn.innerHTML;
+            btn.innerHTML = "⏳ Buscando señal GPS...";
+            btn.disabled = true;
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    map.setView([lat, lng], 18);
+                    actualizarCoordenadasFormulario(lat, lng);
+                    btn.innerHTML = textoOriginal;
+                    btn.disabled = false;
+                    setTimeout(() => { map.invalidateSize(); }, 200);
+                }, 
+                function(error) {
+                    btn.innerHTML = textoOriginal;
+                    btn.disabled = false;
+                    alert("Asegúrate de dar permisos de GPS al navegador y tener la ubicación activada.");
+                }, 
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+            );
