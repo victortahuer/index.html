@@ -117,6 +117,26 @@
                         <option value="Grave">Grave (riesgo inminente de caída)</option>
                     </select>
                 </div>
+// Función para deshabilitar campos si el árbol no existe
+function alternarInexistente(checkbox) {
+    // Lista con las ID exactas de tus campos del formulario
+    const camposForestales = ['dap', 'altura', 'deterioro', 'consumo-agua'];
+    
+    camposForestales.forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.disabled = checkbox.checked;
+            elemento.value = ""; // Limpia el valor actual
+            if(elemento.tagName === "SELECT") elemento.selectedIndex = 0; // Resetea el selector
+        }
+    });
+    
+    // Sugiere un nombre automático en el campo Nombre Común
+    const nombreComun = document.getElementById('nombre-comun');
+    if (checkbox.checked && nombreComun && nombreComun.value === "") {
+        nombreComun.value = "Espacio Vacío / Reforestar";
+    }
+}
 
                 <div class="form-group">
                     <label for="consumo-agua">Consumo de agua</label>
